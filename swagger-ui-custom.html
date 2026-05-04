@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exporta Fácil API - Documentation</title>
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css" integrity="sha512-r1I36zYrXro6ZSASHh+Y7nDigo5BcZe9YMXFf5eo1p7bEKQLoR5OYsKN8X3LSu8EPczXfEaGhNM8arRfKLKqQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+  <style>
+    html {
+      box-sizing: border-box;
+      overflow: -moz-scrollbars-vertical;
+      overflow-y: scroll;
+    }
+    *,
+    *:before,
+    *:after {
+      box-sizing: inherit;
+    }
+    body {
+      margin: 0;
+      background: #fafafa;
+      font-family: sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.min.js" integrity="sha512-A7X+xHW1hFxILJgBPx+8cLnEHWUJEv4p5MhXrHH8UJpPWzB3LXQ4Z76XmKwMAVMJTR5iSfhPUArBmN8hR3B0Xg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.min.js" integrity="sha512-g0S2tHJUryMH0nAqj0CnPwBzZsqz0oDV4fHvLUJD5iFKJ4g6jvGGJqzs8nWGGGxr5gvN+3HWsDWz2d9LTfj6eA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    const ui = SwaggerUIBundle({
+      url: "/docs/swagger.json",
+      dom_id: '#swagger-ui',
+      deepLinking: true,
+      presets: [
+        SwaggerUIBundle.presets.apis,
+        SwaggerUIStandalonePreset
+      ],
+      plugins: [
+        SwaggerUIBundle.plugins.DownloadUrl
+      ],
+      layout: "StandaloneLayout",
+      onComplete: function() {
+        console.log('Swagger UI initialized successfully');
+      }
+    });
+    window.onload = function() {
+      // Set window variable for SwaggerUIStandalonePreset
+      window.ui = ui;
+    };
+  </script>
+</body>
+</html>
