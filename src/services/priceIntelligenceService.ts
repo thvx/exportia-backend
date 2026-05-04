@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { query } from "@database/pool.js";
-import { logger } from "@utils/logger.js";
+import { query } from "../database/pool.js";
+import { logger } from "../utils/logger.js";
 
 export interface UnitExportPrice {
   priceAvg: number;

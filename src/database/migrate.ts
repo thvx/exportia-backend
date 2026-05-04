@@ -1,6 +1,6 @@
 import "../config.js";
 import { initializeTables, seedDefaultUsers, seedSampleData } from "./schema.js";
-import { logger } from "@utils/logger.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * Migration runner - call this to set up database on first start

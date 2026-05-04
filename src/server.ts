@@ -4,17 +4,17 @@ import "./config.js";
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
-import { cacheService } from "@cache/index.js";
-import { initializeTables } from "@database/schema.js";
-import { logger } from "@utils/logger.js";
-import { globalRateLimiter } from "@middleware/rateLimiting.js";
+import { cacheService } from "./cache/index.js";
+import { initializeTables } from "./database/schema.js";
+import { logger } from "./utils/logger.js";
+import { globalRateLimiter } from "./middleware/rateLimiting.js";
 import {
   authMiddleware,
   requestLoggingMiddleware,
   errorMiddleware,
-} from "@middleware/auth.js";
-import apiRoutes from "@routes/api.js";
-import swaggerDocs from "@utils/swagger.js";
+} from "./middleware/auth.js";
+import apiRoutes from "./routes/api.js";
+import swaggerDocs from "./utils/swagger.js";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000");

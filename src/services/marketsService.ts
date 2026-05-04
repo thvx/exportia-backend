@@ -1,6 +1,6 @@
-import { wtoAdapter } from "@adapters/wto.server.js";
-import { logger } from "@utils/logger.js";
-import * as mockData from "@utils/mock.js";
+import { wtoAdapter } from "../adapters/wto.server.js";
+import { logger } from "../utils/logger.js";
+import * as mockData from "../utils/mock.js";
 import {
   MarketTrend,
   CompetitorScore,
@@ -8,7 +8,7 @@ import {
   DemandTrend,
   MarketProfile,
   PotentialMarket,
-} from "@app-types/index.js";
+} from "../types/index.js";
 
 export class MarketsService {
 

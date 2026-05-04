@@ -1,20 +1,28 @@
 import { createClient, RedisClientType } from "redis";
-import { logger } from "@utils/logger.js";
-import { CacheEntry } from "@app-types/index.js";
+import { config } from "../config.js";
+import { logger } from "../utils/logger.js";
+import { CacheEntry } from "../types/index.js";
 
 class CacheService {
   private client: RedisClientType;
   private ttl: number = 300; // 5 minutes default
 
   constructor() {
-    this.client = createClient({
-      password: process.env.REDIS_PASSWORD,
-      socket: {
-        host: process.env.REDIS_HOST || "localhost",
-        port: parseInt(process.env.REDIS_PORT || "6379"),
-        reconnectStrategy: (retries) => Math.min(retries * 50, 500),
-      },
-    });
+    const reconnectStrategy = (retries: number) => Math.min(retries * 50, 500);
+
+    this.client = config.REDIS_URL
+      ? createClient({
+          url: config.REDIS_URL,
+          socket: { reconnectStrategy },
+        })
+      : createClient({
+          password: config.REDIS_PASSWORD || undefined,
+          socket: {
+            host: config.REDIS_HOST,
+            port: config.REDIS_PORT,
+            reconnectStrategy,
+          },
+        });
 
     this.client.on("error", (err) => {
       logger.error(`Redis client error: ${err instanceof Error ? err.message : "Unknown error"}`);

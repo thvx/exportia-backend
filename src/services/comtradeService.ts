@@ -1,7 +1,12 @@
 import axios from "axios";
-import { cacheService } from "@cache/index.js";
-import { logger } from "@utils/logger.js";
-import wtoMembers from "@utils/wtoMembers.json";
+import { createRequire } from "module";
+import { cacheService } from "../cache/index.js";
+import { logger } from "../utils/logger.js";
+
+const require = createRequire(import.meta.url);
+const wtoMembers = require("../utils/wtoMembers.json") as {
+  items: Array<{ value: string; text: string }>;
+};
 
 const COMTRADE_AUTH_BASE   = "https://comtradeapi.un.org/data/v1/get/C/A/HS";
 const COMTRADE_PUBLIC_BASE = "https://comtradeapi.un.org/public/v1/preview/C/A/HS";

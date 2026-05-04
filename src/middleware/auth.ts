@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { logger } from "@utils/logger.js";
-import { JWTPayload, RequestContext } from "@app-types/index.js";
+import { logger } from "../utils/logger.js";
+import { JWTPayload, RequestContext } from "../types/index.js";
 
 /**
  * Authentication Middleware

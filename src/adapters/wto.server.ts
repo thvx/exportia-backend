@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from "axios";
-import { cacheService } from "@cache/index.js";
-import { logger } from "@utils/logger.js";
+import { createRequire } from "module";
+import { cacheService } from "../cache/index.js";
+import { logger } from "../utils/logger.js";
 import {
   EpingAlert,
   QRQuota,
@@ -13,9 +14,13 @@ import {
   TimeseriesQueryParams,
   TimeseriesDataPoint,
   ApiResponse,
-} from "@app-types/index.js";
-import * as mockData from "@utils/mock.js";
-import wtoMembers from "@utils/wtoMembers.json";
+} from "../types/index.js";
+import * as mockData from "../utils/mock.js";
+
+const require = createRequire(import.meta.url);
+const wtoMembers = require("../utils/wtoMembers.json") as {
+  items: Array<{ value: string; text: string }>;
+};
 
 /**
  * WTO Adapter - Single point of integration with WTO APIs

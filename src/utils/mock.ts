@@ -1,4 +1,4 @@
-import { EpingAlert, QRQuota, HSVersion, MarketTrend, TFADProcess, QRRegulation, QRProduct, QRListMeta, TimeseriesDataPoint, DemandTrend, MarketProfile, PotentialMarket } from "@app-types/index.js";
+import { EpingAlert, QRQuota, HSVersion, MarketTrend, TFADProcess, QRRegulation, QRProduct, QRListMeta, TimeseriesDataPoint, DemandTrend, MarketProfile, PotentialMarket } from "../types/index.js";
 
 /**
  * Mock data for development and fallback when WTO API is unavailable

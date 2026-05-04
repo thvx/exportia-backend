@@ -1,17 +1,22 @@
 import { Router, Request, Response, NextFunction } from "express";
 import axios from "axios";
-import { alertsService } from "@services/alertsService.js";
-import { marketsService } from "@services/marketsService.js";
-import { comtradeService } from "@services/comtradeService.js";
-import { facilityService } from "@services/facilityService.js";
-import { productService } from "@services/productService.js";
-import { chatService } from "@services/chatService.js";
-import { authService } from "@services/authService.js";
-import { priceIntelligenceService } from "@services/priceIntelligenceService.js";
-import { wtoRateLimiter, authRateLimiter } from "@middleware/rateLimiting.js";
-import { logger } from "@utils/logger.js";
-import { ApiResponse, PaginatedResponse } from "@app-types/index.js";
-import wtoMembers from "@utils/wtoMembers.json";
+import { createRequire } from "module";
+import { alertsService } from "../services/alertsService.js";
+import { marketsService } from "../services/marketsService.js";
+import { comtradeService } from "../services/comtradeService.js";
+import { facilityService } from "../services/facilityService.js";
+import { productService } from "../services/productService.js";
+import { chatService } from "../services/chatService.js";
+import { authService } from "../services/authService.js";
+import { priceIntelligenceService } from "../services/priceIntelligenceService.js";
+import { wtoRateLimiter, authRateLimiter } from "../middleware/rateLimiting.js";
+import { logger } from "../utils/logger.js";
+import { ApiResponse, PaginatedResponse } from "../types/index.js";
+
+const require = createRequire(import.meta.url);
+const wtoMembers = require("../utils/wtoMembers.json") as {
+  items: Array<{ value: string; text: string }>;
+};
 
 // Middleware that enforces a valid authenticated session
 function requireAuth(req: Request, res: Response, next: NextFunction): void {

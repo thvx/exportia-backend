@@ -1,9 +1,9 @@
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import jwt from "jsonwebtoken";
-import { query } from "@database/pool.js";
-import { logger } from "@utils/logger.js";
-import { JWTPayload, RegisterRequest, UserProfile } from "@app-types/index.js";
+import { query } from "../database/pool.js";
+import { logger } from "../utils/logger.js";
+import { JWTPayload, RegisterRequest, UserProfile } from "../types/index.js";
 
 const scryptAsync = promisify(scrypt);
 

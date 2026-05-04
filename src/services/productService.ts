@@ -1,7 +1,7 @@
-import { query } from "@database/pool.js";
-import { logger } from "@utils/logger.js";
-import { wtoAdapter } from "@adapters/wto.server.js";
-import { ProductConfig, RivalAnalysis } from "@app-types/index.js";
+import { query } from "../database/pool.js";
+import { logger } from "../utils/logger.js";
+import { wtoAdapter } from "../adapters/wto.server.js";
+import { ProductConfig, RivalAnalysis } from "../types/index.js";
 
 class ProductService {
   /**

@@ -1,20 +1,27 @@
 import { Pool, QueryResult, QueryResultRow } from "pg";
 import { config } from "../config.js";
-import { logger } from "@utils/logger.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * PostgreSQL Database Connection Pool
  */
 
+const useSsl =
+  process.env.DB_SSL === "true" ||
+  process.env.PGSSLMODE === "require" ||
+  config.DATABASE_URL.includes("sslmode=require");
+
 const pool = new Pool({
-  host: config.DB_HOST,
-  port: config.DB_PORT,
-  database: config.DB_NAME,
-  user: config.DB_USER,
-  password: config.DB_PASSWORD,
+  connectionString: config.DATABASE_URL || undefined,
+  host: config.DATABASE_URL ? undefined : config.DB_HOST,
+  port: config.DATABASE_URL ? undefined : config.DB_PORT,
+  database: config.DATABASE_URL ? undefined : config.DB_NAME,
+  user: config.DATABASE_URL ? undefined : config.DB_USER,
+  password: config.DATABASE_URL ? undefined : config.DB_PASSWORD,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
+  ssl: useSsl ? { rejectUnauthorized: false } : undefined,
 });
 
 pool.on("error", (err) => {

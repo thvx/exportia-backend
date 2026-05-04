@@ -1,7 +1,7 @@
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 import { query } from "./pool.js";
-import { logger } from "@utils/logger.js";
+import { logger } from "../utils/logger.js";
 
 const scryptAsync = promisify(scrypt);
 
