@@ -1,6 +1,6 @@
 import { wtoAdapter } from "@adapters/wto.server.js";
 import { logger } from "@utils/logger.js";
-import { EpingAlert, QRQuota, QRRegulation, QRProduct, QRListMeta } from "@types/index.js";
+import { EpingAlert, QRQuota, QRRegulation, QRProduct, QRListMeta } from "@app-types/index.js";
 
 /**
  * Alerts Service

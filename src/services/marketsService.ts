@@ -8,7 +8,7 @@ import {
   DemandTrend,
   MarketProfile,
   PotentialMarket,
-} from "@types/index.js";
+} from "@app-types/index.js";
 
 export class MarketsService {
 

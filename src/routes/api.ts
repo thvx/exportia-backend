@@ -10,7 +10,7 @@ import { authService } from "@services/authService.js";
 import { priceIntelligenceService } from "@services/priceIntelligenceService.js";
 import { wtoRateLimiter, authRateLimiter } from "@middleware/rateLimiting.js";
 import { logger } from "@utils/logger.js";
-import { ApiResponse, PaginatedResponse } from "@types/index.js";
+import { ApiResponse, PaginatedResponse } from "@app-types/index.js";
 import wtoMembers from "@utils/wtoMembers.json";
 
 // Middleware that enforces a valid authenticated session

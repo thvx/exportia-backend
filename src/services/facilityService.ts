@@ -1,6 +1,6 @@
 import { wtoAdapter } from "@adapters/wto.server.js";
 import { logger } from "@utils/logger.js";
-import { TFADProcess, LogisticRequirement } from "@types/index.js";
+import { TFADProcess, LogisticRequirement } from "@app-types/index.js";
 
 /**
  * Facility Service

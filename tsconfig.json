@@ -18,7 +18,7 @@
     "ignoreDeprecations": "5.0",
     "baseUrl": "./src",
     "paths": {
-      "@types/*": ["types/*"],
+      "@app-types/*": ["types/*"],
       "@services/*": ["services/*"],
       "@adapters/*": ["adapters/*"],
       "@cache/*": ["cache/*"],

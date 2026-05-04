@@ -1,5 +1,5 @@
 import { logger } from "@utils/logger.js";
-import { ChatMessage, ChatSession, User } from "@types/index.js";
+import { ChatMessage, ChatSession, User } from "@app-types/index.js";
 import axios from "axios";
 
 /**

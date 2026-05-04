@@ -66,20 +66,25 @@ export async function retryWithBackoff<T>(
  * Deep merge objects
  */
 export function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
-  const result = { ...target };
+  const result: Record<string, any> = { ...target };
 
   for (const key in source) {
-    if (source.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
       const sourceValue = source[key];
       const targetValue = result[key];
 
       if (sourceValue && typeof sourceValue === "object" && !Array.isArray(sourceValue)) {
-        result[key] = deepMerge(targetValue || {}, sourceValue);
+        result[key] = deepMerge(
+          targetValue && typeof targetValue === "object" && !Array.isArray(targetValue)
+            ? targetValue
+            : {},
+          sourceValue as Record<string, any>
+        );
       } else {
         result[key] = sourceValue;
       }
     }
   }
 
-  return result;
+  return result as T;
 }

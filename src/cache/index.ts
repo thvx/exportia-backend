@@ -1,6 +1,6 @@
 import { createClient, RedisClientType } from "redis";
 import { logger } from "@utils/logger.js";
-import { CacheEntry } from "@types/index.js";
+import { CacheEntry } from "@app-types/index.js";
 
 class CacheService {
   private client: RedisClientType;
@@ -8,10 +8,10 @@ class CacheService {
 
   constructor() {
     this.client = createClient({
-      host: process.env.REDIS_HOST || "localhost",
-      port: parseInt(process.env.REDIS_PORT || "6379"),
       password: process.env.REDIS_PASSWORD,
       socket: {
+        host: process.env.REDIS_HOST || "localhost",
+        port: parseInt(process.env.REDIS_PORT || "6379"),
         reconnectStrategy: (retries) => Math.min(retries * 50, 500),
       },
     });

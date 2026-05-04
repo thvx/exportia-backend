@@ -13,7 +13,7 @@ import {
   TimeseriesQueryParams,
   TimeseriesDataPoint,
   ApiResponse,
-} from "@types/index.js";
+} from "@app-types/index.js";
 import * as mockData from "@utils/mock.js";
 import wtoMembers from "@utils/wtoMembers.json";
 
@@ -956,4 +956,3 @@ class WTOAdapter {
 
 // Singleton instance
 export const wtoAdapter = new WTOAdapter();
-
