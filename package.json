@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "tsc && mkdir -p dist/utils && cp src/utils/wtoMembers.json dist/utils/wtoMembers.json",
     "start": "node dist/server.js",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write src/**/*.ts",
