@@ -1132,17 +1132,16 @@ const CLASSIFY_POLL_MAX_ATTEMPTS = 72; // 6 min máx
 let classifyClientPromise: Promise<IdTokenClient> | null = null;
 
 function getGcpServiceAccountKey(): Record<string, unknown> | null {
-  const raw = process.env.GCP_SERVICE_ACCOUNT_KEY;
   const keyFile = process.env.GCP_SERVICE_ACCOUNT_KEY_FILE ?? process.env.GOOGLE_APPLICATION_CREDENTIALS;
-
   if (keyFile) {
     try {
       return JSON.parse(readFileSync(keyFile, "utf8")) as Record<string, unknown>;
-    } catch {
-      return null;
+    } catch (err: any) {
+      logger.warn(`[classify] GCP_SERVICE_ACCOUNT_KEY_FILE no se pudo leer (${keyFile}): ${err?.message} — intentando GCP_SERVICE_ACCOUNT_KEY`);
     }
   }
 
+  const raw = process.env.GCP_SERVICE_ACCOUNT_KEY;
   if (!raw) return null;
 
   try {
@@ -1151,6 +1150,7 @@ function getGcpServiceAccountKey(): Record<string, unknown> | null {
     try {
       return JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as Record<string, unknown>;
     } catch {
+      logger.error("[classify] GCP_SERVICE_ACCOUNT_KEY no es JSON válido ni base64 válido");
       return null;
     }
   }
@@ -1163,7 +1163,10 @@ function getClassifyClient(): Promise<IdTokenClient> {
       throw new Error("Configura GCP_SERVICE_ACCOUNT_KEY como JSON/base64 válido o GCP_SERVICE_ACCOUNT_KEY_FILE con la ruta del JSON");
     }
     const auth = new GoogleAuth({ credentials });
-    classifyClientPromise = auth.getIdTokenClient(CLASSIFY_BASE);
+    classifyClientPromise = auth.getIdTokenClient(CLASSIFY_BASE).catch((err) => {
+      classifyClientPromise = null; // permite reintentar en la próxima llamada
+      throw err;
+    });
   }
   return classifyClientPromise;
 }
