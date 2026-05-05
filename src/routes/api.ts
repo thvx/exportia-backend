@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from "express";
 import axios from "axios";
 import { createRequire } from "module";
+import { readFileSync } from "fs";
+import { GoogleAuth, IdTokenClient } from "google-auth-library";
 import { alertsService } from "../services/alertsService.js";
 import { marketsService } from "../services/marketsService.js";
 import { comtradeService } from "../services/comtradeService.js";
@@ -9,6 +11,7 @@ import { productService } from "../services/productService.js";
 import { chatService } from "../services/chatService.js";
 import { authService } from "../services/authService.js";
 import { priceIntelligenceService } from "../services/priceIntelligenceService.js";
+import { getRamRequirements, getRamProductCountries, proxyRamDownload } from "../services/ramPromperuService.js";
 import { wtoRateLimiter, authRateLimiter } from "../middleware/rateLimiting.js";
 import { logger } from "../utils/logger.js";
 import { ApiResponse, PaginatedResponse } from "../types/index.js";
@@ -1122,24 +1125,73 @@ router.get("/api/timeseries/search/indicators", wtoRateLimiter, async (req: Requ
 // 🤖 CLASSIFY PROXY
 // =====================
 
-const CLASSIFY_BASE = "https://ue1-dev-com-run-genai-aec-backend-785788544283.us-east1.run.app";
-const CLASSIFY_USER_EMAIL = "dafnanicole2612@gmail.com";
+const CLASSIFY_BASE = process.env.CLASSIFY_BASE_URL ?? "https://ue1-dev-com-run-genai-aec-backend-785788544283.us-east1.run.app";
+const CLASSIFY_USER_EMAIL = process.env.CLASSIFY_USER_EMAIL ?? "dafnanicole2612@gmail.com";
 const CLASSIFY_POLL_INTERVAL_MS = 5000;
 const CLASSIFY_POLL_MAX_ATTEMPTS = 72; // 6 min máx
+let classifyClientPromise: Promise<IdTokenClient> | null = null;
 
-async function pollClassifyResult(taskId: string, token: string): Promise<void> {
+function getGcpServiceAccountKey(): Record<string, unknown> | null {
+  const raw = process.env.GCP_SERVICE_ACCOUNT_KEY;
+  const keyFile = process.env.GCP_SERVICE_ACCOUNT_KEY_FILE ?? process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+  if (keyFile) {
+    try {
+      return JSON.parse(readFileSync(keyFile, "utf8")) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    try {
+      return JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+}
+
+function getClassifyClient(): Promise<IdTokenClient> {
+  if (!classifyClientPromise) {
+    const credentials = getGcpServiceAccountKey();
+    if (!credentials) {
+      throw new Error("Configura GCP_SERVICE_ACCOUNT_KEY como JSON/base64 válido o GCP_SERVICE_ACCOUNT_KEY_FILE con la ruta del JSON");
+    }
+    const auth = new GoogleAuth({ credentials });
+    classifyClientPromise = auth.getIdTokenClient(CLASSIFY_BASE);
+  }
+  return classifyClientPromise;
+}
+
+async function classifyRequest<T>(path: string, options: { method: "GET" | "POST"; data?: unknown }): Promise<T> {
+  const client = await getClassifyClient();
+  const response = await client.request<T>({
+    url: `${CLASSIFY_BASE}${path}`,
+    method: options.method,
+    data: options.data,
+    headers: {
+      "x-user-email": CLASSIFY_USER_EMAIL,
+      "Content-Type": "application/json",
+    },
+    timeout: 30000,
+  });
+  return response.data;
+}
+
+async function pollClassifyResult(taskId: string): Promise<void> {
   logger.info(`[classify] Iniciando polling | task_id=${taskId}`);
   for (let attempt = 1; attempt <= CLASSIFY_POLL_MAX_ATTEMPTS; attempt++) {
     await new Promise<void>((resolve) => setTimeout(resolve, CLASSIFY_POLL_INTERVAL_MS));
     try {
-      const res = await axios.get(
-        `${CLASSIFY_BASE}/api/classify/${taskId}`,
-        {
-          headers: { Authorization: `Bearer ${token}`, "x-user-email": CLASSIFY_USER_EMAIL },
-          timeout: 30000,
-        }
+      const data = await classifyRequest<{ status: string; result?: unknown; current_step?: number; total_steps?: number; progress_message?: string }>(
+        `/api/classify/${taskId}`,
+        { method: "GET" }
       );
-      const data = res.data as { status: string; result?: unknown; current_step?: number; total_steps?: number; progress_message?: string };
 
       logger.info(`[classify] Intento ${attempt} | task_id=${taskId} | status=${data.status}` +
         (data.current_step !== undefined ? ` | paso=${data.current_step}/${data.total_steps}` : "") +
@@ -1168,30 +1220,21 @@ async function pollClassifyResult(taskId: string, token: string): Promise<void> 
 
 router.post("/api/classify", requireAuth, async (req: Request, res: Response) => {
   try {
-    const token = process.env.CLASSIFY_API_TOKEN;
-    if (!token) {
+    if (!process.env.GCP_SERVICE_ACCOUNT_KEY && !process.env.GCP_SERVICE_ACCOUNT_KEY_FILE && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       return res.status(503).json({ success: false, error: "Servicio de clasificación no configurado", timestamp: new Date() });
     }
 
-    const response = await axios.post(
-      `${CLASSIFY_BASE}/api/classify-text/`,
-      req.body,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "x-user-email": CLASSIFY_USER_EMAIL,
-          "Content-Type": "application/json",
-        },
-        timeout: 30000,
-      }
+    const data = await classifyRequest<{ task_id?: string; [key: string]: unknown }>(
+      "/api/classify-text/",
+      { method: "POST", data: req.body }
     );
 
-    const taskId: string = response.data?.task_id;
+    const taskId = data.task_id;
     if (taskId) {
-      void pollClassifyResult(taskId, token);
+      void pollClassifyResult(taskId);
     }
 
-    res.json({ success: true, data: response.data, timestamp: new Date() });
+    res.json({ success: true, data, timestamp: new Date() });
   } catch (err: any) {
     const status = err.response?.status;
     const message = err.response?.data?.detail ?? err.response?.data?.message ?? err.message;
@@ -1202,27 +1245,80 @@ router.post("/api/classify", requireAuth, async (req: Request, res: Response) =>
 
 router.get("/api/classify/:taskId", requireAuth, async (req: Request, res: Response) => {
   try {
-    const token = process.env.CLASSIFY_API_TOKEN;
-    if (!token) {
+    if (!process.env.GCP_SERVICE_ACCOUNT_KEY && !process.env.GCP_SERVICE_ACCOUNT_KEY_FILE && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       return res.status(503).json({ success: false, error: "Servicio de clasificación no configurado", timestamp: new Date() });
     }
 
-    const response = await axios.get(
-      `${CLASSIFY_BASE}/api/classify/${req.params.taskId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "x-user-email": CLASSIFY_USER_EMAIL,
-        },
-        timeout: 30000,
-      }
+    const data = await classifyRequest<unknown>(
+      `/api/classify/${req.params.taskId}`,
+      { method: "GET" }
     );
 
-    res.json({ success: true, data: response.data, timestamp: new Date() });
+    res.json({ success: true, data, timestamp: new Date() });
   } catch (err: any) {
     const status = err.response?.status;
     const message = err.response?.data?.detail ?? err.response?.data?.message ?? err.message;
     res.status(typeof status === "number" && status >= 400 && status < 600 ? status : 500).json({ success: false, error: message, timestamp: new Date() });
+  }
+});
+
+// =====================
+// 🌎 RAM PROMPERÚ ENDPOINTS
+// =====================
+
+router.get("/api/ram/countries", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { hs_code } = req.query;
+    if (!hs_code) {
+      res.status(400).json({ success: false, error: "Parámetro hs_code requerido", timestamp: new Date() });
+      return;
+    }
+    const countries = await getRamProductCountries(String(hs_code));
+    res.json({ success: true, data: countries, timestamp: new Date() });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, timestamp: new Date() });
+  }
+});
+
+router.get("/api/ram/requirements", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { hs_code, country_name, country_id } = req.query;
+    if (!hs_code || !country_name) {
+      res.status(400).json({ success: false, error: "Parámetros hs_code y country_name requeridos", timestamp: new Date() });
+      return;
+    }
+    const result = await getRamRequirements(
+      String(hs_code),
+      String(country_name),
+      country_id ? Number(country_id) : undefined
+    );
+    res.json({ success: true, data: result, timestamp: new Date() });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, timestamp: new Date() });
+  }
+});
+
+router.get("/api/ram/download", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { hs_code, country_name, country_id } = req.query;
+    if (!hs_code || !country_name) {
+      res.status(400).json({ success: false, error: "Parámetros hs_code y country_name requeridos", timestamp: new Date() });
+      return;
+    }
+    const result = await proxyRamDownload(
+      String(hs_code),
+      String(country_name),
+      country_id ? Number(country_id) : undefined
+    );
+    if (!result) {
+      res.status(404).json({ success: false, error: "No se encontraron datos de requisitos para este producto y país", timestamp: new Date() });
+      return;
+    }
+    res.setHeader("Content-Type", result.contentType);
+    res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+    result.stream.pipe(res);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, timestamp: new Date() });
   }
 });
 

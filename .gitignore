@@ -41,3 +41,6 @@ temp/
 # OS
 Thumbs.db
 .DS_Store
+
+#gcp service account key
+prueba-cxvkxx-0a99e94707bc.json
