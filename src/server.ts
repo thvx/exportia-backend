@@ -19,6 +19,9 @@ import swaggerDocs from "./utils/swagger.js";
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000");
 const isDev = process.env.NODE_ENV !== "production";
+// Trust proxy (para Railway)
+app.set('trust proxy', 1);
+
 
 // =====================
 // SECURITY MIDDLEWARE (BEFORE CORS)
@@ -44,7 +47,7 @@ app.use(
 // =====================
 
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "*",
+  origin: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || "*",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
   allowedHeaders: ["Content-Type", "Authorization", "X-API-Key"],
