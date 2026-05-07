@@ -46,8 +46,23 @@ app.use(
 // CORS MIDDLEWARE (BEFORE OTHER MIDDLEWARE)
 // =====================
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.CORS_ORIGIN,
+].filter(Boolean) as string[];
+
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || "*",
+  origin: allowedOrigins.length > 0
+    ? (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+        // Allow requests with no origin (curl, mobile, server-to-server)
+        if (!origin) return callback(null, true);
+        // Allow exact matches from env vars
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        // Allow any Vercel preview deployment for this project
+        if (origin.endsWith('.vercel.app')) return callback(null, true);
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    : "*",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
   allowedHeaders: ["Content-Type", "Authorization", "X-API-Key"],
