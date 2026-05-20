@@ -703,6 +703,73 @@ router.delete("/api/user/me/products/:productId", requireAuth, async (req: Reque
   }
 });
 
+// ============================================
+// 🌍 PER-PRODUCT DESTINATION COUNTRY ENDPOINTS
+// ============================================
+
+router.post("/api/product/:productId/countries", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { userId } = (req as any).context;
+    const { productId } = req.params;
+    const { country_code, country_name } = req.body;
+
+    if (!country_code || !country_name) {
+      return res.status(400).json({ success: false, error: "country_code y country_name son requeridos", timestamp: new Date() });
+    }
+
+    // Verify this product belongs to the user
+    const { query: dbQuery } = await import("../database/pool.js");
+    const ownership = await dbQuery(
+      `SELECT 1 FROM user_products WHERE user_id = $1 AND product_id = $2`,
+      [userId, productId]
+    );
+    if (ownership.rows.length === 0) {
+      return res.status(403).json({ success: false, error: "No tienes acceso a este producto", timestamp: new Date() });
+    }
+
+    await dbQuery(
+      `INSERT INTO product_destination_countries (product_id, country_code, country_name)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (product_id, country_code) DO NOTHING`,
+      [productId, country_code, country_name]
+    );
+
+    const result = await dbQuery(
+      `SELECT country_code, country_name FROM product_destination_countries WHERE product_id = $1 ORDER BY country_name`,
+      [productId]
+    );
+
+    res.status(201).json({ success: true, data: result.rows, timestamp: new Date() });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, timestamp: new Date() });
+  }
+});
+
+router.delete("/api/product/:productId/countries/:code", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { userId } = (req as any).context;
+    const { productId, code } = req.params;
+
+    const { query: dbQuery } = await import("../database/pool.js");
+    const ownership = await dbQuery(
+      `SELECT 1 FROM user_products WHERE user_id = $1 AND product_id = $2`,
+      [userId, productId]
+    );
+    if (ownership.rows.length === 0) {
+      return res.status(403).json({ success: false, error: "No tienes acceso a este producto", timestamp: new Date() });
+    }
+
+    await dbQuery(
+      `DELETE FROM product_destination_countries WHERE product_id = $1 AND country_code = $2`,
+      [productId, code]
+    );
+
+    res.json({ success: true, message: "País eliminado del producto", timestamp: new Date() });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, timestamp: new Date() });
+  }
+});
+
 // =====================
 // 🛍️ PRODUCT ENDPOINTS
 // =====================

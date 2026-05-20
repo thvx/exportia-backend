@@ -170,6 +170,8 @@ export interface ProductConfig {
   category: string;
   description?: string;
   regulations?: string[];
+  classification_data?: Record<string, unknown> | null;
+  destination_countries: UserDestinationCountry[];
   created_at: Date;
   updated_at: Date;
   created_by: string;

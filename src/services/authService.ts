@@ -112,10 +112,32 @@ class AuthService {
       [id]
     );
 
+    // Fetch per-product destination countries for all user products in one query
+    const productIds = productsResult.rows.map((p: any) => p.id);
+    let productCountriesMap: Record<string, Array<{ country_code: string; country_name: string }>> = {};
+    if (productIds.length > 0) {
+      const pdcResult = await query(
+        `SELECT product_id, country_code, country_name
+         FROM product_destination_countries
+         WHERE product_id = ANY($1::uuid[])
+         ORDER BY country_name`,
+        [productIds]
+      );
+      for (const row of pdcResult.rows) {
+        if (!productCountriesMap[row.product_id]) productCountriesMap[row.product_id] = [];
+        productCountriesMap[row.product_id].push({ country_code: row.country_code, country_name: row.country_name });
+      }
+    }
+
+    const products = productsResult.rows.map((p: any) => ({
+      ...p,
+      destination_countries: productCountriesMap[p.id] ?? [],
+    }));
+
     return {
       ...user,
       destination_countries: countriesResult.rows,
-      products: productsResult.rows,
+      products,
     };
   }
 

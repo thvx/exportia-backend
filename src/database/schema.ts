@@ -154,6 +154,20 @@ export async function initializeTables(): Promise<void> {
     `);
     logger.info("Product export prices cache table ready");
 
+    // Per-product destination countries table
+    await query(`
+      CREATE TABLE IF NOT EXISTS product_destination_countries (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        product_id UUID NOT NULL,
+        country_code VARCHAR(10) NOT NULL,
+        country_name VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+        UNIQUE (product_id, country_code)
+      );
+    `);
+    logger.info("Product destination countries table ready");
+
     // Indices
     await query(`
       CREATE INDEX IF NOT EXISTS idx_products_hs_code ON products(hs_code);
@@ -164,6 +178,7 @@ export async function initializeTables(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_query_logs_created_at ON query_logs(created_at);
       CREATE INDEX IF NOT EXISTS idx_user_dest_countries_user_id ON user_destination_countries(user_id);
       CREATE INDEX IF NOT EXISTS idx_user_products_user_id ON user_products(user_id);
+      CREATE INDEX IF NOT EXISTS idx_product_dest_countries_product_id ON product_destination_countries(product_id);
     `);
     logger.info("Indices ready");
 
