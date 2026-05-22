@@ -160,18 +160,25 @@ class ComtradeService {
 
   // ── Public methods ────────────────────────────────────────────────────────
 
-  /** Top countries that supply product X to destination country. */
-  async getTopImporters(destCode: string, hsCode: string, limit = 5): Promise<TradePartner[]> {
-    const cacheKey = `comtrade:top-importers:${destCode}:${hsCode}:${limit}`;
+  /** Top countries that supply product X to destination country.
+   *  @param countryName  Human-readable country name, e.g. "Australia" */
+  async getTopImporters(countryName: string, hsCode: string, limit = 5): Promise<TradePartner[]> {
+    const cacheKey = `comtrade:top-importers:${countryName}:${hsCode}:${limit}`;
     const cached   = await cacheService.get<TradePartner[]>(cacheKey);
     if (cached) return cached;
 
+    const reporterCode = this.countryNameToCode(countryName);
+    if (!reporterCode) {
+      logger.warn(`Comtrade getTopImporters: no numeric code for country "${countryName}"`);
+      return [];
+    }
+
     const rows = await this.callQueued({
-      reporterCode: this.wtoToNumeric(destCode),
-      cmdCode:      this.normalizeHs(hsCode),
-      flowCode:     "M",
-      period:       this.defaultPeriod,
-      maxRecords:   250,
+      reporterCode,
+      cmdCode:    this.normalizeHs(hsCode),
+      flowCode:   "M",
+      period:     this.defaultPeriod,
+      maxRecords: 250,
     }).catch((err) => {
       logger.warn(`Comtrade getTopImporters error: ${err instanceof Error ? err.message : err}`);
       return [] as ComtradeRow[];

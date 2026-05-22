@@ -1075,14 +1075,14 @@ router.get("/api/timeseries/geographical-regions", wtoRateLimiter, async (_req: 
 // 🌐 COMTRADE ENDPOINTS
 // =====================
 
-// GET /api/comtrade/top-importers?destCode=C032&hsCode=0901&limit=5
+// GET /api/comtrade/top-importers?countryName=Australia&hsCode=0901&limit=5
 router.get("/api/comtrade/top-importers", wtoRateLimiter, async (req: Request, res: Response) => {
   try {
-    const { destCode, hsCode, limit = "5" } = req.query;
-    if (!destCode || !hsCode) {
-      return res.status(400).json({ success: false, error: "destCode y hsCode son requeridos", timestamp: new Date() });
+    const { countryName, hsCode, limit = "5" } = req.query;
+    if (!countryName || !hsCode) {
+      return res.status(400).json({ success: false, error: "countryName y hsCode son requeridos", timestamp: new Date() });
     }
-    const data = await comtradeService.getTopImporters(destCode as string, hsCode as string, parseInt(limit as string));
+    const data = await comtradeService.getTopImporters(countryName as string, hsCode as string, parseInt(limit as string));
     res.json({ success: true, data, timestamp: new Date() });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message, timestamp: new Date() });

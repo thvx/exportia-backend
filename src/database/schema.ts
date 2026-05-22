@@ -154,6 +154,11 @@ export async function initializeTables(): Promise<void> {
     `);
     logger.info("Product export prices cache table ready");
 
+    await query(`
+      ALTER TABLE product_export_prices ADD COLUMN IF NOT EXISTS price_history JSONB DEFAULT '[]';
+    `);
+    logger.info("Product export prices price_history column ready");
+
     // Per-product destination countries table
     await query(`
       CREATE TABLE IF NOT EXISTS product_destination_countries (

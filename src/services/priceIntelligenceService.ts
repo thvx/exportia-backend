@@ -2,6 +2,11 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { query } from "../database/pool.js";
 import { logger } from "../utils/logger.js";
 
+export interface PriceHistoryPoint {
+  year: number;
+  price: number;
+}
+
 export interface UnitExportPrice {
   priceAvg: number;
   priceMin: number;
@@ -13,6 +18,7 @@ export interface UnitExportPrice {
   originCountry: string;
   destinationCountry: string;
   cached: boolean;
+  historicalPrices: PriceHistoryPoint[];
 }
 
 class PriceIntelligenceService {
@@ -46,7 +52,7 @@ class PriceIntelligenceService {
   ): Promise<UnitExportPrice | null> {
     const result = await query(
       `SELECT hs_code, origin_country, destination_country,
-              price_avg, price_min, price_max, unit, currency, explanation
+              price_avg, price_min, price_max, unit, currency, explanation, price_history
          FROM product_export_prices
         WHERE hs_code = $1
           AND origin_country = $2
@@ -58,6 +64,11 @@ class PriceIntelligenceService {
     if (result.rows.length === 0) return null;
 
     const row = result.rows[0];
+    const historicalPrices: PriceHistoryPoint[] = Array.isArray(row.price_history) ? row.price_history : [];
+
+    // Invalidate old cache entries that were saved before the price_history column was added
+    if (historicalPrices.length === 0) return null;
+
     return {
       hsCode: row.hs_code,
       originCountry: row.origin_country,
@@ -68,6 +79,7 @@ class PriceIntelligenceService {
       unit: row.unit,
       currency: "USD",
       explanation: row.explanation,
+      historicalPrices,
       cached: true,
     };
   }
@@ -75,16 +87,17 @@ class PriceIntelligenceService {
   private async upsertCache(price: UnitExportPrice): Promise<void> {
     await query(
       `INSERT INTO product_export_prices
-         (hs_code, origin_country, destination_country, price_avg, price_min, price_max, unit, currency, explanation)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         (hs_code, origin_country, destination_country, price_avg, price_min, price_max, unit, currency, explanation, price_history)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        ON CONFLICT (hs_code, origin_country, destination_country)
        DO UPDATE SET
-         price_avg = EXCLUDED.price_avg,
-         price_min = EXCLUDED.price_min,
-         price_max = EXCLUDED.price_max,
-         unit = EXCLUDED.unit,
-         explanation = EXCLUDED.explanation,
-         updated_at = CURRENT_TIMESTAMP`,
+         price_avg    = EXCLUDED.price_avg,
+         price_min    = EXCLUDED.price_min,
+         price_max    = EXCLUDED.price_max,
+         unit         = EXCLUDED.unit,
+         explanation  = EXCLUDED.explanation,
+         price_history = EXCLUDED.price_history,
+         updated_at   = CURRENT_TIMESTAMP`,
       [
         price.hsCode,
         price.originCountry,
@@ -95,6 +108,7 @@ class PriceIntelligenceService {
         price.unit,
         price.currency,
         price.explanation,
+        JSON.stringify(price.historicalPrices),
       ]
     );
   }
@@ -104,19 +118,28 @@ class PriceIntelligenceService {
     originCountry: string,
     destinationCountry: string
   ): Promise<UnitExportPrice> {
+    const currentYear = new Date().getFullYear();
+    const fromYear    = currentYear - 10;
+
     const prompt = `Eres un experto en comercio internacional y precios de exportación FOB.
 
 Producto a analizar:
 - Código HS (primeros 4-6 dígitos): ${hsCode}
-- País exportador: ${originCountry}
-- País importador: ${destinationCountry}
+- País exportador (origen): ${originCountry}
+- País importador (destino): ${destinationCountry}
 
-Basado en estadísticas de la OMC, ITC TradeMap y patrones históricos de comercio internacional, estima el precio unitario comercial promedio FOB en USD para esta ruta comercial específica en el último año disponible.
+Basándote en estadísticas de la OMC, ITC TradeMap, UN Comtrade y patrones históricos de comercio internacional, proporciona:
+
+1. El precio unitario comercial promedio FOB en USD para esta ruta comercial en el último año disponible (${currentYear - 1}).
+2. El rango de precios (mínimo y máximo) habitual para esta ruta.
+3. El histórico de precios unitarios FOB promedio para los últimos 10 años (${fromYear}–${currentYear - 1}), TODOS en la misma unidad comercial.
+
+IMPORTANTE: Todos los precios (priceAvg, priceMin, priceMax e historicalPrices) deben estar expresados en la misma unidad comercial habitual para este producto (ej: kg, tonelada métrica, litro, unidad, caja de 20kg, etc.).
 
 Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional ni bloques de código:
-{"priceAvg":<número>,"priceMin":<número>,"priceMax":<número>,"unit":"<unidad comercial habitual, ej: kg, tonelada, litro, unidad>","currency":"USD","explanation":"<explicación breve en español de máx 110 caracteres>"}`;
+{"priceAvg":<número>,"priceMin":<número>,"priceMax":<número>,"unit":"<unidad>","currency":"USD","explanation":"<explicación breve en español, máx 110 caracteres>","historicalPrices":[{"year":${fromYear},"price":<número>},{"year":${fromYear + 1},"price":<número>},{"year":${fromYear + 2},"price":<número>},{"year":${fromYear + 3},"price":<número>},{"year":${fromYear + 4},"price":<número>},{"year":${fromYear + 5},"price":<número>},{"year":${fromYear + 6},"price":<número>},{"year":${fromYear + 7},"price":<número>},{"year":${fromYear + 8},"price":<número>},{"year":${fromYear + 9},"price":<número>}]}`;
 
-    const model  = this.genai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    const model = this.genai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
     let raw: string;
     try {
       const result = await model.generateContent(prompt);
@@ -132,7 +155,7 @@ Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional ni bloques 
       throw new Error(`Error al consultar el modelo de IA: ${err?.message ?? "desconocido"}`);
     }
 
-    let parsed: Omit<UnitExportPrice, "hsCode" | "originCountry" | "destinationCountry" | "cached">;
+    let parsed: any;
     try {
       const jsonStr = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/i, "").trim();
       parsed = JSON.parse(jsonStr);
@@ -151,9 +174,21 @@ Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional ni bloques 
       throw new Error("Respuesta incompleta del modelo para la estimación de precio.");
     }
 
+    // Normalize historicalPrices: ensure it's a valid array of {year, price}
+    const historicalPrices: PriceHistoryPoint[] = Array.isArray(parsed.historicalPrices)
+      ? (parsed.historicalPrices as any[])
+          .filter((p) => typeof p.year === "number" && typeof p.price === "number")
+          .sort((a, b) => a.year - b.year)
+      : [];
+
     return {
-      ...parsed,
+      priceAvg: parsed.priceAvg,
+      priceMin: parsed.priceMin,
+      priceMax: parsed.priceMax,
+      unit: parsed.unit,
       currency: "USD",
+      explanation: parsed.explanation ?? "",
+      historicalPrices,
       hsCode,
       originCountry,
       destinationCountry,
